@@ -37,7 +37,17 @@ class MovieDetailsViewController: UIViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-    
+        
+        if let id = movieID {
+            DBManager.shared.loadMovie(withID: id, completionHandler: {
+                (movie) in DispatchQueue.main.async {
+                    if movie != nil {
+                        self.movieInfo = movie
+                        self.setValuesToViews()
+                    }
+                }
+            })
+        }
     }
     
     
@@ -117,7 +127,9 @@ class MovieDetailsViewController: UIViewController {
     
     
     @IBAction func saveChanges(_ sender: AnyObject) {
-    
+        DBManager.shared.updateMovie(withID: movieInfo.movieID, watched: movieInfo.watched, likes: movieInfo.likes)
+        
+        _ = self.navigationController?.popViewController(animated: true)
     }
     
     

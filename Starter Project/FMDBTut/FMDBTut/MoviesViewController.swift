@@ -54,6 +54,9 @@ class MoviesViewController: UIViewController, UITableViewDelegate, UITableViewDa
         if let identifier = segue.identifier {
             if identifier == "idSegueMovieDetails" {
                 
+                let movieDetailsViewController = segue.destination as! MovieDetailsViewController
+                
+                movieDetailsViewController.movieID = movies[selectedMovieIndex].movieID
             }
         }
         
@@ -72,13 +75,24 @@ class MoviesViewController: UIViewController, UITableViewDelegate, UITableViewDa
         return (movies != nil) ? movies.count : 0
     }
     
-    
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+        let currentMovie = movies[indexPath.row]
         
+        cell.textLabel?.text = currentMovie.title
+        cell.imageView?.contentMode = UIView.ContentMode.scaleAspectFit
+        
+        (URLSession(configuration: URLSessionConfiguration.default)).dataTask(with: URL(string: currentMovie.coverURL)!, completionHandler: { (imageData, response, error) in
+            if let data = imageData {
+                DispatchQueue.main.async {
+                    cell.imageView?.image = UIImage(data: data)
+                    cell.layoutSubviews()
+                }
+            }
+        }).resume()
+    
         return cell
     }
-    
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         return 100.0
@@ -90,4 +104,23 @@ class MoviesViewController: UIViewController, UITableViewDelegate, UITableViewDa
         performSegue(withIdentifier: "idSegueMovieDetails", sender: nil)
     }
     
+    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
+        
+        if editingStyle == .delete {
+            if DBManager.shared.deleteMovie(withID: movies[indexPath.row].movieID)
+            {
+                movies.remove(at: indexPath.row)
+                tblMovies.reloadData()
+            }
+        }
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        movies = DBManager.shared.loadMovies()
+        
+        tblMovies.reloadData()
+    }
+
 }

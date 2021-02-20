@@ -100,19 +100,113 @@ class DBManager: NSObject {
                             let movieCoverURL = movieParts[4]
                             
                             query += "insert into movies (\(field_MovieID), \(field_MovieTitle), \(field_MovieCategory), \(field_MovieYear), \(field_MovieURL), \(field_MovieCoverURL), \(field_MovieWatched), \(field_MovieLikes)) values (null, '\(movieTitle)', '\(movieCategory)', '\(movieYear)', '\(movieUrl)', '\(movieCoverURL)', 0, 0);"
-                            
-                            if !database.executeStatements(query) {
-                                print("Falha ao inserir dados iniciais na base de dados")
-                                
-                                print(database.lastError(), database.lastErrorMessage())
-                            }
                         }
+                    }
+                    
+                    if !database.executeStatements(query) {
+                        print("Falha ao inserir dados iniciais na base de dados")
+                        
+                        print(database.lastError(), database.lastErrorMessage())
                     }
                 }
                 catch {
                     print(error.localizedDescription)
                 }
             }
+            
+            database.close()
         }
+    }
+    
+    func loadMovies() -> [MovieInfo]! {
+        var movies: [MovieInfo]!
+        
+        if openDatabase() {
+            let query = "select * from movies order by \(field_MovieYear) asc"
+            
+            do {
+                print(database)
+                
+                let results = try database.executeQuery(query, values: nil)
+                
+                while results.next() {
+                    let movie = MovieInfo(movieID: Int(results.int(forColumn: field_MovieID)), title: results.string(forColumn: field_MovieTitle), category: results.string(forColumn: field_MovieCategory), year: Int(results.int(forColumn: field_MovieYear)), movieURL: results.string(forColumn: field_MovieURL), coverURL: results.string(forColumn: field_MovieCoverURL), watched: results.bool(forColumn: field_MovieWatched), likes: Int(results.int(forColumn: field_MovieLikes)))
+                    
+                    if movies == nil {
+                        movies = [MovieInfo]()
+                    }
+                    
+                    movies.append(movie)
+                }
+            
+            }
+            catch {
+                print(error.localizedDescription)
+            }
+        }
+        
+        return movies
+    }
+    
+    func loadMovie(withID ID: Int, completionHandler: (_ movieInfo: MovieInfo?) -> Void) {
+        var movieInfo: MovieInfo!
+        
+        if openDatabase() {
+            let query = "select * from movies where \(field_MovieID)=?"
+            
+            do{
+                let results = try database.executeQuery(query, values: [ID])
+                
+                if results.next() {
+                    movieInfo = MovieInfo(movieID: Int(results.int(forColumn: field_MovieID)), title: results.string(forColumn: field_MovieTitle), category: results.string(forColumn: field_MovieCategory), year: Int(results.int(forColumn: field_MovieYear)), movieURL: results.string(forColumn: field_MovieURL), coverURL: results.string(forColumn: field_MovieCoverURL), watched: results.bool(forColumn: field_MovieWatched), likes: Int(results.int(forColumn: field_MovieLikes)))
+                }
+                else {
+                    print(database.lastError())
+                }
+            }
+            catch{
+                print(error.localizedDescription)
+            }
+            
+            database.close()
+        }
+        
+        completionHandler(movieInfo)
+    }
+    
+    func updateMovie(withID ID: Int, watched: Bool, likes: Int) {
+        if openDatabase() {
+            let query = "update movies set \(field_MovieWatched)=?, \(field_MovieLikes)=? where \(field_MovieID)=?"
+            
+            do {
+                try database.executeUpdate(query, values: [watched, likes, ID])
+            }
+            catch {
+                print(error.localizedDescription)
+            }
+            
+            database.close()
+        }
+    }
+    
+    func deleteMovie(withID ID: Int) -> Bool {
+        var deleted = false
+        
+        if openDatabase(){
+            let query = "delete from movies where \(field_MovieID)=?"
+            
+            do {
+                try database.executeUpdate(query, values: [ID])
+                
+                deleted = true
+            }
+            catch {
+                print(error.localizedDescription)
+            }
+            
+            database.close()
+        }
+        
+        return deleted
     }
 }
